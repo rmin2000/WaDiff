@@ -2,7 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--data_dir", type=str, default='../../../../data/coco/val2014', help="Directory with image dataset."
+    "--data_dir", type=str, default='../../../../data/coco/train2014', help="Directory with image dataset."
 )
 parser.add_argument(
     "--use_celeba_preprocessing",
