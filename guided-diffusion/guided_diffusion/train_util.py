@@ -39,6 +39,7 @@ class TrainLoop:
         schedule_sampler=None,
         weight_decay=0.0,
         lr_anneal_steps=0,
+        ori_model=None,
         wm_length=48,
         alpha=0,
         wm_decoder=None,
@@ -71,14 +72,21 @@ class TrainLoop:
         self.wm_length = wm_length
         self.sync_cuda = th.cuda.is_available()
 
-        self._load_and_sync_parameters()
+        if wm_length > 0 and isinstance(wm_length, int):
+            self.ori_model = ori_model
+            self._load_and_sync_parameters(load_wm_model=True)
+        else:
+            self.ori_model = None
+            self._load_and_sync_parameters()
         
         self.mp_trainer = MixedPrecisionTrainer(
             model=self.model,
             use_fp16=self.use_fp16,
             fp16_scale_growth=fp16_scale_growth,
         )
-
+        
+        
+        
         self.opt = AdamW(
             self.mp_trainer.master_params, lr=self.lr, weight_decay=self.weight_decay
         )
@@ -113,13 +121,9 @@ class TrainLoop:
                 )
             self.use_ddp = False
             self.ddp_model = self.model
-        if wm_length > 0 and isinstance(wm_length, int):
-            # need to set the wm length to 0
-            self.ori_model = copy.deepcopy(self.ddp_model).eval()
-        else:
-            self.ori_model = None
+        
 
-    def _load_and_sync_parameters(self):
+    def _load_and_sync_parameters(self, load_wm_model=False):
         resume_checkpoint = find_resume_checkpoint() or self.resume_checkpoint
 
         
@@ -129,20 +133,22 @@ class TrainLoop:
             if dist.get_rank() == 0:
                 logger.log(f"loading model from checkpoint: {resume_checkpoint}...")
                 model_dict = dist_util.load_state_dict(resume_checkpoint, map_location=dist_util.dev())
-
+                
                 # modify the model dict
-                
-                
-                if self.wm_length > 0 and isinstance(self.wm_length, int):
-                    
+                if load_wm_model:
+                    model_dict_ori = copy.deepcopy(model_dict)
                     model_dict['input_blocks.0.0.weight'] = th.cat((model_dict['input_blocks.0.0.weight'], 
                     self.model.input_blocks[0][0].weight[:,3:,...]), 1)
                     model_dict['secret_dense.weight'] = self.model.secret_dense.weight
                     model_dict['secret_dense.bias'] = self.model.secret_dense.bias
 
-                # print(model_dict['input_blocks.0.0.weight'].shape)
-                
-                self.model.load_state_dict(model_dict)
+                    self.model.load_state_dict(model_dict)
+
+                    del model_dict
+                    self.ori_model.load_state_dict(model_dict_ori)
+                else:
+                    self.model.load_state_dict(model_dict)
+
                 print('Successfully Loaded.')
                 
                 # self.model.load_state_dict(

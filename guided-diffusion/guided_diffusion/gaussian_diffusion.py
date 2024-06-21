@@ -10,6 +10,7 @@ import math
 
 import numpy as np
 import torch as th
+import torch.nn.functional as F
 
 from .nn import mean_flat
 from .losses import normal_kl, discretized_gaussian_log_likelihood
@@ -780,15 +781,18 @@ class GaussianDiffusion:
             model_output = model(x_t, self._scale_timesteps(t), **model_kwargs) # 4, 6, 256, 256
             
             if ori_model:
+                # Remember to add a time threshold and decode the fingerprinted image
                 ori_model_output = ori_model(x_t, self._scale_timesteps(t), **model_kwargs)
                 
-                wm_string = generate_random_fingerprints(x_t.shape[0], wm_decoder.fingerprint_size).to(x_t.device)
-                x_t_new = (x_t, wm_string)
+                fingerprints = generate_random_fingerprints(x_t.shape[0], wm_decoder.fingerprint_size).to(x_t.device)
+                x_t_new = (x_t, fingerprints)
                 model_output = model(x_t_new, self._scale_timesteps(t), **model_kwargs)
+                x_0_fingerprinted = model_output # not finished yet
+                decoder_output = decoder(x_0_fingerprinted)
                 # First reverse the x_0
-                # then decode from the reversed x_0 to obtain wm_string
+                # then decode from the reversed x_0 to obtain fingerprints
                 # Add BCE logit loss to compute the overall loss
-                # watermark_loss = wm_decoder() # to be continued
+                BCE_loss = F.binary_cross_entropy_with_logits(decoder_output.view(-1)*10, fingerprints.view(-1), reduction='mean')
             else:
                 ori_model_output = None
             
@@ -823,14 +827,18 @@ class GaussianDiffusion:
             }[self.model_mean_type]
             assert model_output.shape == target.shape == x_start.shape
             if ori_model_output:
-                terms["mse"] = mean_flat((ori_model_output - model_output) ** 2) + alpha * watermark_loss 
+                terms["mse"] = mean_flat((ori_model_output - model_output) ** 2) 
+                terms["wm"] = alpha * BCE_loss 
+                terms["loss"] = terms["mse"] + terms["wm"]
             else:
-                terms["mse"] = mean_flat((target - model_output) ** 2)
-            if "vb" in terms:
-                terms["loss"] = terms["mse"] + terms["vb"]
-                print(11111)
-            else:
-                terms["loss"] = terms["mse"]
+                terms["loss"] = terms["mse"] = mean_flat((target - model_output) ** 2)
+
+            # if "vb" in terms:
+            #     terms["loss"] = terms["mse"] + terms["vb"]
+                
+            # else:
+            #     print(11111)
+            #     terms["loss"] = terms["mse"]
             
         else:
             raise NotImplementedError(self.loss_type)

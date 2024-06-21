@@ -34,6 +34,17 @@ def main():
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys()), wm_length=args.wm_length
     )
+
+    # Create the original model architecture
+    ori_model, _ = create_model_and_diffusion(
+        **args_to_dict(args, model_and_diffusion_defaults().keys()), wm_length=0
+    )
+    for param in ori_model.parameters():
+        param.requires_grad = False
+    
+    ori_model.eval()
+    ori_model.to(dist_util.dev())
+
     model.to(dist_util.dev())
     schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion)
     
@@ -71,6 +82,7 @@ def main():
         schedule_sampler=schedule_sampler,
         weight_decay=args.weight_decay,
         lr_anneal_steps=args.lr_anneal_steps,
+        ori_model=ori_model,
         wm_length=args.wm_length,
         alpha=args.alpha,
         wm_decoder=wm_decoder
