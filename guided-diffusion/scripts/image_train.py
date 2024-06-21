@@ -19,7 +19,8 @@ from guided_diffusion.script_util import (
     add_dict_to_argparser,
 )
 from guided_diffusion.train_util import TrainLoop
-
+from guided_diffusion.stega_model import StegaStampDecoder
+import torch as th
 
 def main():
     args = create_argparser().parse_args()
@@ -36,6 +37,15 @@ def main():
     model.to(dist_util.dev())
     schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion)
     
+    # Define watermark decoder
+    wm_decoder = StegaStampDecoder(
+        args.image_size,
+        3,
+        args.wm_length,
+    )
+    wm_decoder.load_state_dict(th.load(args.wm_decoder_path, map_location='cpu')).eval()
+    wm_decoder.to(dist_util.dev())
+
     logger.log("creating data loader...")
     data = load_data(
         data_dir=args.data_dir,
@@ -63,6 +73,7 @@ def main():
         lr_anneal_steps=args.lr_anneal_steps,
         wm_length=args.wm_length,
         alpha=args.alpha,
+        wm_decoder=wm_decoder
     ).run_loop()
 
 
@@ -83,6 +94,7 @@ def create_argparser():
         fp16_scale_growth=1e-3,
         wm_length=48,
         alpha=0.4,
+        wm_decoder_path='./',
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()

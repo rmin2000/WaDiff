@@ -480,7 +480,7 @@ class UNetModel(nn.Module):
             self.label_emb = nn.Embedding(num_classes, time_embed_dim)
 
         ch = input_ch = int(channel_mult[0] * model_channels)
-        if wm_length is not None and isinstance(wm_length, int):
+        if wm_length > 0 and isinstance(wm_length, int):
             self.secret_dense = nn.Linear(wm_length, image_size * image_size * in_channels)
             self.input_blocks = nn.ModuleList(
                 [TimestepEmbedSequential(conv_nd(dims, in_channels * 2, ch, 3, padding=1))]
@@ -657,7 +657,7 @@ class UNetModel(nn.Module):
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
         wm_emb = None
 
-        if self.wm_length is not None and isinstance(self.wm_length, int):
+        if self.wm_length > 0 and isinstance(self.wm_length, int):
             x, fingerprint = x[0], x[1]
             wm_emb = self.secret_dense(fingerprint).view((-1, self.in_channels, self.image_size, self.image_size)).type(self.dtype)
 

@@ -161,7 +161,7 @@ class MixedPrecisionTrainer:
         self.model_params = list(self.model.parameters())
         # modify updated parameter
         
-        if model.wm_length is not None and isinstance(model.wm_length, int):
+        if model.wm_length > 0 and isinstance(model.wm_length, int):
         # self.master_params = self.model_params
             self.master_params = list(self.model.secret_dense.parameters()) + list(self.model.input_blocks[0].parameters())
         else:

@@ -14,6 +14,9 @@ import torch as th
 from .nn import mean_flat
 from .losses import normal_kl, discretized_gaussian_log_likelihood
 
+def generate_random_fingerprints(bit_length, batch_size=4):
+    z = th.zeros((batch_size, bit_length), dtype=th.float).random_(0, 2)
+    return z
 
 def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
     """
@@ -741,7 +744,7 @@ class GaussianDiffusion:
         output = th.where((t == 0), decoder_nll, kl)
         return {"output": output, "pred_xstart": out["pred_xstart"]}
 
-    def training_losses(self, model, ori_model, alpha, x_start, t, model_kwargs=None, noise=None):
+    def training_losses(self, model, ori_model, alpha, wm_decoder, x_start, t, model_kwargs=None, noise=None):
         """
         Compute training losses for a single timestep.
 
@@ -774,35 +777,42 @@ class GaussianDiffusion:
             if self.loss_type == LossType.RESCALED_KL:
                 terms["loss"] *= self.num_timesteps
         elif self.loss_type == LossType.MSE or self.loss_type == LossType.RESCALED_MSE:
-            model_output = model(x_t, self._scale_timesteps(t), **model_kwargs)
+            model_output = model(x_t, self._scale_timesteps(t), **model_kwargs) # 4, 6, 256, 256
             
             if ori_model:
                 ori_model_output = ori_model(x_t, self._scale_timesteps(t), **model_kwargs)
+                
+                wm_string = generate_random_fingerprints(x_t.shape[0], wm_decoder.fingerprint_size).to(x_t.device)
+                x_t_new = (x_t, wm_string)
+                model_output = model(x_t_new, self._scale_timesteps(t), **model_kwargs)
+                # First reverse the x_0
+                # then decode from the reversed x_0 to obtain wm_string
+                # Add BCE logit loss to compute the overall loss
+                # watermark_loss = wm_decoder() # to be continued
             else:
                 ori_model_output = None
-            # todo add watermark decoder
-            # todo add watermark loss
-            if self.model_var_type in [ # will not get in this loop
-                ModelVarType.LEARNED,
-                ModelVarType.LEARNED_RANGE,
-            ]:
-                B, C = x_t.shape[:2]
-                assert model_output.shape == (B, C * 2, *x_t.shape[2:])
-                model_output, model_var_values = th.split(model_output, C, dim=1)
-                # Learn the variance using the variational bound, but don't let
-                # it affect our mean prediction.
-                frozen_out = th.cat([model_output.detach(), model_var_values], dim=1)
-                terms["vb"] = self._vb_terms_bpd(
-                    model=lambda *args, r=frozen_out: r,
-                    x_start=x_start,
-                    x_t=x_t,
-                    t=t,
-                    clip_denoised=False,
-                )["output"]
-                if self.loss_type == LossType.RESCALED_MSE:
-                    # Divide by 1000 for equivalence with initial implementation.
-                    # Without a factor of 1/1000, the VB term hurts the MSE term.
-                    terms["vb"] *= self.num_timesteps / 1000.0
+            
+            # if self.model_var_type in [ 
+            #     ModelVarType.LEARNED,
+            #     ModelVarType.LEARNED_RANGE,
+            # ]:
+            #     B, C = x_t.shape[:2]
+            #     assert model_output.shape == (B, C * 2, *x_t.shape[2:])
+            #     model_output, model_var_values = th.split(model_output, C, dim=1)
+            #     # Learn the variance using the variational bound, but don't let
+            #     # it affect our mean prediction.
+            #     frozen_out = th.cat([model_output.detach(), model_var_values], dim=1)
+            #     terms["vb"] = self._vb_terms_bpd(
+            #         model=lambda *args, r=frozen_out: r,
+            #         x_start=x_start,
+            #         x_t=x_t,
+            #         t=t,
+            #         clip_denoised=False,
+            #     )["output"]
+            #     if self.loss_type == LossType.RESCALED_MSE:
+            #         # Divide by 1000 for equivalence with initial implementation.
+            #         # Without a factor of 1/1000, the VB term hurts the MSE term.
+            #         terms["vb"] *= self.num_timesteps / 1000.0
 
             target = {
                 ModelMeanType.PREVIOUS_X: self.q_posterior_mean_variance(
@@ -818,8 +828,10 @@ class GaussianDiffusion:
                 terms["mse"] = mean_flat((target - model_output) ** 2)
             if "vb" in terms:
                 terms["loss"] = terms["mse"] + terms["vb"]
+                print(11111)
             else:
                 terms["loss"] = terms["mse"]
+            
         else:
             raise NotImplementedError(self.loss_type)
 

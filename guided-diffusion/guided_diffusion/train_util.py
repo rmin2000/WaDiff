@@ -41,6 +41,7 @@ class TrainLoop:
         lr_anneal_steps=0,
         wm_length=48,
         alpha=0,
+        wm_decoder=None,
     ):
         self.model = model
         self.diffusion = diffusion
@@ -62,6 +63,7 @@ class TrainLoop:
         self.weight_decay = weight_decay
         self.lr_anneal_steps = lr_anneal_steps
         self.alpha = alpha
+        self.wm_decoder = wm_decoder
 
         self.step = 0
         self.resume_step = 0
@@ -111,7 +113,8 @@ class TrainLoop:
                 )
             self.use_ddp = False
             self.ddp_model = self.model
-        if wm_length is not None and isinstance(wm_length, int):
+        if wm_length > 0 and isinstance(wm_length, int):
+            # need to set the wm length to 0
             self.ori_model = copy.deepcopy(self.ddp_model).eval()
         else:
             self.ori_model = None
@@ -130,7 +133,7 @@ class TrainLoop:
                 # modify the model dict
                 
                 
-                if self.wm_length is not None and isinstance(self.wm_length, int):
+                if self.wm_length > 0 and isinstance(self.wm_length, int):
                     
                     model_dict['input_blocks.0.0.weight'] = th.cat((model_dict['input_blocks.0.0.weight'], 
                     self.model.input_blocks[0][0].weight[:,3:,...]), 1)
@@ -221,6 +224,7 @@ class TrainLoop:
                 self.ddp_model,
                 self.ori_model,
                 self.alpha,
+                self.wm_decoder,
                 micro,
                 t,
                 model_kwargs=micro_cond,
