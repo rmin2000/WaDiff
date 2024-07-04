@@ -2,7 +2,7 @@
 This code is the official implementation of [A Watermark-Conditioned Diffusion Model for IP Protection](https://arxiv.org/abs/2403.10893).
 
 ----
-<div align=center><img src=pics/framework.pdf  width="80%" height="60%"></div>
+<div align=center><img src=pics/framework.png  width="80%" height="60%"></div>
 
 ### Abstract
 
