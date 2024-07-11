@@ -11,11 +11,36 @@ import math
 import numpy as np
 import torch as th
 import torch.nn.functional as F
-
+import torchvision.models as models 
+import torch.nn as nn
 from .nn import mean_flat
 from .losses import normal_kl, discretized_gaussian_log_likelihood
 
-def generate_random_fingerprints(bit_length, batch_size=4):
+class FeatureExtractor(nn.Module):
+        def __init__(self, cnn, feature_layer=11):
+            super().__init__()
+            self.features = nn.Sequential(*list(cnn.features.children())[:(feature_layer + 1)])
+
+        def normalize(self, tensors, mean, std):
+            if not th.is_tensor(tensors):
+                raise TypeError('tensor is not a torch image.')
+            for tensor in tensors:
+                for t, m, s in zip(tensor, mean, std):
+                    t.sub_(m).div_(s)
+            return tensors
+
+        def forward(self, x):
+            # it image is gray scale then make it to 3 channel
+            self.features.to(x.device)
+            if x.size()[1] == 1:
+                x = x.expand(-1, 3, -1, -1)
+                
+            x = (x + 1) * 0.5
+            
+            x.data = self.normalize(x.data, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            return self.features(x)
+
+def generate_random_fingerprints(batch_size, bit_length):
     z = th.zeros((batch_size, bit_length), dtype=th.float).random_(0, 2)
     return z
 
@@ -172,6 +197,9 @@ class GaussianDiffusion:
             / (1.0 - self.alphas_cumprod)
         )
 
+        
+        self.per_model = FeatureExtractor(models.vgg19(pretrained=True), 23)
+
     def q_mean_variance(self, x_start, t):
         """
         Get the distribution q(x_t | x_0).
@@ -208,6 +236,12 @@ class GaussianDiffusion:
             + _extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape)
             * noise
         )
+    
+    def q_sample_reverse(self, x_noisy, t, noise):
+        
+        assert noise.shape == x_noisy.shape
+        return (x_noisy - _extract_into_tensor(self.sqrt_one_minus_alphas_cumprod, t, x_noisy.shape) * noise) \
+            / _extract_into_tensor(self.sqrt_alphas_cumprod, t, x_noisy.shape)
 
     def q_posterior_mean_variance(self, x_start, x_t, t):
         """
@@ -778,23 +812,21 @@ class GaussianDiffusion:
             if self.loss_type == LossType.RESCALED_KL:
                 terms["loss"] *= self.num_timesteps
         elif self.loss_type == LossType.MSE or self.loss_type == LossType.RESCALED_MSE:
-            model_output = model(x_t, self._scale_timesteps(t), **model_kwargs) # 4, 6, 256, 256
+            
             
             if ori_model:
                 # Remember to add a time threshold and decode the fingerprinted image
                 ori_model_output = ori_model(x_t, self._scale_timesteps(t), **model_kwargs)
                 
+                
                 fingerprints = generate_random_fingerprints(x_t.shape[0], wm_decoder.fingerprint_size).to(x_t.device)
                 x_t_new = (x_t, fingerprints)
                 model_output = model(x_t_new, self._scale_timesteps(t), **model_kwargs)
-                x_0_fingerprinted = model_output # not finished yet
-                decoder_output = decoder(x_0_fingerprinted)
-                # First reverse the x_0
-                # then decode from the reversed x_0 to obtain fingerprints
-                # Add BCE logit loss to compute the overall loss
-                BCE_loss = F.binary_cross_entropy_with_logits(decoder_output.view(-1)*10, fingerprints.view(-1), reduction='mean')
+                
             else:
                 ori_model_output = None
+                model_output = model(x_t, self._scale_timesteps(t), **model_kwargs) # 4, 6, 256, 256
+                
             
             # if self.model_var_type in [ 
             #     ModelVarType.LEARNED,
@@ -817,7 +849,10 @@ class GaussianDiffusion:
             #         # Divide by 1000 for equivalence with initial implementation.
             #         # Without a factor of 1/1000, the VB term hurts the MSE term.
             #         terms["vb"] *= self.num_timesteps / 1000.0
-
+            
+            B, C = x_t.shape[:2]
+            assert model_output.shape == (B, C * 2, *x_t.shape[2:])
+            model_output, model_var_values = th.split(model_output, C, dim=1)
             target = {
                 ModelMeanType.PREVIOUS_X: self.q_posterior_mean_variance(
                     x_start=x_start, x_t=x_t, t=t
@@ -825,19 +860,32 @@ class GaussianDiffusion:
                 ModelMeanType.START_X: x_start,
                 ModelMeanType.EPSILON: noise,
             }[self.model_mean_type]
+
             assert model_output.shape == target.shape == x_start.shape
-            if ori_model_output:
-                terms["mse"] = mean_flat((ori_model_output - model_output) ** 2) 
+            
+            if ori_model_output is not None:
+                x_0_fingerprinted = th.clamp(self.q_sample_reverse(x_t, t, model_output), 0, 1)
+                
+                decoder_output = wm_decoder(x_0_fingerprinted)
+                # First reverse the x_0
+                # then decode from the reversed x_0 to obtain fingerprints
+                # Add BCE logit loss to compute the overall loss
+                BCE_loss = F.binary_cross_entropy_with_logits(decoder_output.view(-1)*10, fingerprints.view(-1), reduction='mean')
+                ori_model_output, _ = th.split(ori_model_output, C, dim=1)
+
+                
+                terms["mse"] = mean_flat((self.per_model(ori_model_output) - self.per_model(model_output)) ** 2) 
                 terms["wm"] = alpha * BCE_loss 
                 terms["loss"] = terms["mse"] + terms["wm"]
             else:
                 terms["loss"] = terms["mse"] = mean_flat((target - model_output) ** 2)
+            
+
 
             # if "vb" in terms:
             #     terms["loss"] = terms["mse"] + terms["vb"]
                 
             # else:
-            #     print(11111)
             #     terms["loss"] = terms["mse"]
             
         else:

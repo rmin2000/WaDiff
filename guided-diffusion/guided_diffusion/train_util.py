@@ -88,7 +88,7 @@ class TrainLoop:
         
         
         self.opt = AdamW(
-            self.mp_trainer.master_params, lr=self.lr, weight_decay=self.weight_decay
+            self.mp_trainer.master_params_train, lr=self.lr, weight_decay=self.weight_decay
         )
         if self.resume_step:
             self._load_optimizer_state()
@@ -217,7 +217,8 @@ class TrainLoop:
     def forward_backward(self, batch, cond):
         self.mp_trainer.zero_grad()
         for i in range(0, batch.shape[0], self.microbatch):
-            micro = batch[i : i + self.microbatch].to(dist_util.dev())
+            micro = batch[i : i + self.microbatch].to(dist_util.dev()) # -1 ~ 1
+            
             micro_cond = {
                 k: v[i : i + self.microbatch].to(dist_util.dev())
                 for k, v in cond.items()

@@ -656,16 +656,18 @@ class UNetModel(nn.Module):
         hs = []
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
         wm_emb = None
-
+        
+        
         if self.wm_length > 0 and isinstance(self.wm_length, int):
+            
             x, fingerprint = x[0], x[1]
             wm_emb = self.secret_dense(fingerprint).view((-1, self.in_channels, self.image_size, self.image_size)).type(self.dtype)
-
+            wm_emb = nn.ReLU()(wm_emb)
         if self.num_classes is not None:
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)
         # Add watermark embedding
-        h = th.cat([h, wm_emb], 1) if wm_emb else x.type(self.dtype)
+        h = th.cat([x.type(self.dtype), wm_emb.type(self.dtype)], 1) if wm_emb is not None else x.type(self.dtype)
         for module in self.input_blocks:
             h = module(h, emb)
             hs.append(h)

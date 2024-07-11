@@ -163,9 +163,12 @@ class MixedPrecisionTrainer:
         
         if model.wm_length > 0 and isinstance(model.wm_length, int):
         # self.master_params = self.model_params
-            self.master_params = list(self.model.secret_dense.parameters()) + list(self.model.input_blocks[0].parameters())
+            self.master_params_train = list(self.model.secret_dense.parameters()) + list(self.model.input_blocks[0].parameters())
         else:
-            self.master_params = self.model_params
+            self.master_params_train = self.model_params
+
+        self.master_params = self.model_params
+        
 
         self.param_groups_and_shapes = None
         self.lg_loss_scale = initial_lg_loss_scale

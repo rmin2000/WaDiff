@@ -49,13 +49,16 @@ def main():
     schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion)
     
     # Define watermark decoder
-    wm_decoder = StegaStampDecoder(
-        args.image_size,
-        3,
-        args.wm_length,
-    )
-    wm_decoder.load_state_dict(th.load(args.wm_decoder_path, map_location='cpu')).eval()
-    wm_decoder.to(dist_util.dev())
+    if args.wm_length > 0 and isinstance(args.wm_length, int):
+        wm_decoder = StegaStampDecoder(
+            args.image_size,
+            3,
+            args.wm_length,
+        )
+        wm_decoder.load_state_dict(th.load(args.wm_decoder_path, map_location='cpu')).eval()
+        wm_decoder.to(dist_util.dev())
+    else:
+        wm_decoder = None
 
     logger.log("creating data loader...")
     data = load_data(
