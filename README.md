@@ -14,10 +14,12 @@ First, you need to pre-train the watermark encoder and decoder. Go to the [Stega
 ```cmd
 sh train.sh
 ```
+Note that directly running the script may not be successful as you need to specify the path of the training data ```--data_dir``` in your project. Besides, you can customize your experiments by adjusting hyperparameters such as the number of watermark bits ```--bit_length```, image resolution ```--image_resolution```, training epochs ```--num_epochs``` and GPU device ```--cuda```.
 
+Once you have obtained the pre-trained watermark decoder, you can 
 
 [Pin] I will keep on updating this repo. However, reproducing the project will require some time as the original code was accidentally deleted due to an unfortunate accident (the original server was taken back without making any backup). Nevertheless, I plan to reproduce this repo before the conference. Should you have any concerns related to our project, please contact me via rminaa@connect.ust.hk.
-- [x] StegaStamp training code (coco only)
+- [x] StegaStamp training code
 - [x] Imagenet Diffusion (mostly done)
 - [ ] Tracing Code (progressing)
 - [ ] Stable Diffusion
