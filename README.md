@@ -32,5 +32,7 @@ But before running the script, you need to specify two critical components, i.e.
 - [ ] Tracing Code (progressing)
 - [ ] Stable Diffusion
 
+### Citation
+The camera-ready version of our paper will be available soon.
 
 #### Our codes are heavily built upon [stable-diffusion](https://github.com/CompVis/stable-diffusion), [guided-diffusion](https://github.com/openai/guided-diffusion) and [WatermarkDM](https://github.com/yunqing-me/WatermarkDM).
