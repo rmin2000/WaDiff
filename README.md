@@ -31,3 +31,6 @@ But before running the script, you need to specify two critical components, i.e.
 - [x] Imagenet Diffusion (mostly done, some bugs exist)
 - [ ] Tracing Code (progressing)
 - [ ] Stable Diffusion
+
+
+#### Our codes are mostly built upon [stable-diffusion](https://github.com/CompVis/stable-diffusion), [guided-diffusion](https://github.com/openai/guided-diffusion) and [WatermarkDM](https://github.com/yunqing-me/WatermarkDM).
