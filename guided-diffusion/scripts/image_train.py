@@ -55,7 +55,7 @@ def main():
             3,
             args.wm_length,
         )
-        wm_decoder.load_state_dict(th.load(args.wm_decoder_path, map_location='cpu')).eval()
+        # wm_decoder.load_state_dict(th.load(args.wm_decoder_path, map_location='cpu')).eval()
         wm_decoder.to(dist_util.dev())
     else:
         wm_decoder = None

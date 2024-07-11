@@ -864,9 +864,10 @@ class GaussianDiffusion:
             assert model_output.shape == target.shape == x_start.shape
             
             if ori_model_output is not None:
-                x_0_fingerprinted = th.clamp(self.q_sample_reverse(x_t, t, model_output), 0, 1)
                 
-                decoder_output = wm_decoder(x_0_fingerprinted)
+                x_0_fingerprinted = th.clamp(self.q_sample_reverse(x_t, t, model_output), -1, 1)
+                
+                decoder_output = wm_decoder((x_0_fingerprinted + 1) * 0.5) 
                 # First reverse the x_0
                 # then decode from the reversed x_0 to obtain fingerprints
                 # Add BCE logit loss to compute the overall loss

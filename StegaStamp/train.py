@@ -1,8 +1,29 @@
 import argparse
+import glob
+import os
+from os.path import join
+from time import time
+from datetime import datetime
+
+from tqdm import tqdm
+import PIL
+import numpy as np
+
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, Dataset, Subset
+from torchvision import transforms
+from torchvision.utils import save_image
+from tensorboardX import SummaryWriter
+
+from torch.optim import Adam
+import torch.nn.functional as F
+import models
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--data_dir", type=str, default='../../../../data/coco/train2014', help="Directory with image dataset."
+    "--data_dir", type=str, default='../../../../../data/coco/train2014', help="Directory with image dataset."
 )
 parser.add_argument(
     "--use_celeba_preprocessing",
@@ -12,7 +33,7 @@ parser.add_argument(
 parser.add_argument(
     "--output_dir", type=str, default='./', help="Directory to save results."
 )
-parser.add_argument("--data_size", type=int, default=5000, help="Sample number for training.")
+parser.add_argument("--data_size", type=int, default=5000, help="Number of data for training.")
 
 parser.add_argument(
     "--bit_length",
@@ -62,34 +83,6 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-
-import glob
-import os
-from os.path import join
-from time import time
-
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda)
-from datetime import datetime
-
-from tqdm import tqdm
-import PIL
-import numpy as np
-
-import torch
-from torch import nn
-from torch.utils.data import DataLoader, Dataset, Subset
-from torchvision import transforms
-from torchvision.utils import make_grid
-from torchvision.datasets import ImageFolder
-from torchvision.utils import save_image
-from tensorboardX import SummaryWriter
-
-from torch.optim import Adam, SGD
-import torch.nn.functional as F
-import models
-import random
-
 now = datetime.now()
 dt_string = now.strftime("%d%m%Y_%H:%M:%S")
 EXP_NAME = f"stegastamp_{args.bit_length}_{dt_string}"
@@ -124,9 +117,9 @@ class CustomImageFolder(Dataset):
     def __init__(self, data_dir, transform=None):
         self.data_dir = data_dir    
         self.filenames = glob.glob(os.path.join(data_dir, "*.jpg"))
-              
-        # self.filenames = sorted(self.filenames)
-        random.shuffle(self.filenames)
+        self.filenames.extend(glob.glob(os.path.join(data_dir, "*.png")))
+        self.filenames.extend(glob.glob(os.path.join(data_dir, "*.jpeg")))
+        
         self.transform = transform
 
     def __getitem__(self, idx):
@@ -220,16 +213,9 @@ def main():
             fingerprints = fingerprints.to(device)
 
             fingerprinted_images = encoder(fingerprints, clean_images)
-            # residual = fingerprinted_images - clean_images
-
-         
-            # print(fingerprinted_images.min(), fingerprinted_images.max())
-           
+            
 
             decoder_output = decoder(fingerprinted_images)
-            
-            
-            # print(l2_loss_weight, BCE_loss_weight)
             criterion = nn.MSELoss()
             l2_loss = criterion(fingerprinted_images, clean_images)
 
@@ -254,16 +240,13 @@ def main():
                     steps_since_l2_loss_activated = 0
             else:
                 steps_since_l2_loss_activated += 1
-            print("Total loss", loss, global_step),
-            print("BCE_loss", BCE_loss, global_step),
+            
             # Logging
             if global_step in plot_points:
-                writer.add_scalar("bitwise_accuracy", bitwise_accuracy, global_step),
-                print("Bitwise accuracy {}".format(bitwise_accuracy))
-                print("Total loss", loss, global_step),
-                print("BCE_loss", BCE_loss, global_step),
-               
+                writer.add_scalar("Bit Accuracy", bitwise_accuracy, global_step)
+                writer.add_scalar("Total loss", loss, global_step)
                 
+                print(f"Step: {global_step} | Bitwise accuracy: {bitwise_accuracy} | Total loss: {loss}")
                 save_image(
                     fingerprinted_images[:15], # Fast to display
                     SAVED_IMAGES + "/{}.png".format(global_step),
