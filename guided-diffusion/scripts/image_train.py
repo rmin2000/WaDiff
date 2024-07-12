@@ -55,7 +55,7 @@ def main():
             3,
             args.wm_length,
         )
-        # wm_decoder.load_state_dict(th.load(args.wm_decoder_path, map_location='cpu')).eval()
+        wm_decoder.load_state_dict(th.load(args.wm_decoder_path, map_location='cpu')).eval()
         wm_decoder.to(dist_util.dev())
     else:
         wm_decoder = None
@@ -88,6 +88,7 @@ def main():
         ori_model=ori_model,
         wm_length=args.wm_length,
         alpha=args.alpha,
+        threshold=args.threshold,
         wm_decoder=wm_decoder
     ).run_loop()
 
@@ -109,6 +110,7 @@ def create_argparser():
         fp16_scale_growth=1e-3,
         wm_length=48,
         alpha=0.4,
+        threshold=400,
         wm_decoder_path='./',
     )
     defaults.update(model_and_diffusion_defaults())

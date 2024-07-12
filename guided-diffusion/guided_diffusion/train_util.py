@@ -42,6 +42,7 @@ class TrainLoop:
         ori_model=None,
         wm_length=48,
         alpha=0,
+        threshold=0,
         wm_decoder=None,
     ):
         self.model = model
@@ -64,6 +65,7 @@ class TrainLoop:
         self.weight_decay = weight_decay
         self.lr_anneal_steps = lr_anneal_steps
         self.alpha = alpha
+        self.threshold = threshold
         self.wm_decoder = wm_decoder
 
         self.step = 0
@@ -231,6 +233,7 @@ class TrainLoop:
                 self.ddp_model,
                 self.ori_model,
                 self.alpha,
+                self.threshold,
                 self.wm_decoder,
                 micro,
                 t,

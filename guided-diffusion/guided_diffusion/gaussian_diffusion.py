@@ -779,7 +779,7 @@ class GaussianDiffusion:
         output = th.where((t == 0), decoder_nll, kl)
         return {"output": output, "pred_xstart": out["pred_xstart"]}
 
-    def training_losses(self, model, ori_model, alpha, wm_decoder, x_start, t, model_kwargs=None, noise=None):
+    def training_losses(self, model, ori_model, alpha, threshold, wm_decoder, x_start, t, model_kwargs=None, noise=None):
         """
         Compute training losses for a single timestep.
 
@@ -820,6 +820,9 @@ class GaussianDiffusion:
                 
                 
                 fingerprints = generate_random_fingerprints(x_t.shape[0], wm_decoder.fingerprint_size).to(x_t.device)
+                
+                
+                fingerprints = fingerprints * (t <= threshold).view(-1, 1)
                 x_t_new = (x_t, fingerprints)
                 model_output = model(x_t_new, self._scale_timesteps(t), **model_kwargs)
                 
@@ -871,7 +874,10 @@ class GaussianDiffusion:
                 # First reverse the x_0
                 # then decode from the reversed x_0 to obtain fingerprints
                 # Add BCE logit loss to compute the overall loss
-                BCE_loss = F.binary_cross_entropy_with_logits(decoder_output.view(-1)*10, fingerprints.view(-1), reduction='mean')
+                # BCE_loss = F.binary_cross_entropy_with_logits(decoder_output.view(-1)*10, fingerprints.view(-1), reduction='none')
+                BCE_loss = F.binary_cross_entropy_with_logits(decoder_output*10, fingerprints, reduction='none')
+                BCE_loss *= (t <= threshold).view(-1, 1)
+                BCE_loss = BCE_loss.mean()
                 ori_model_output, _ = th.split(ori_model_output, C, dim=1)
 
                 
