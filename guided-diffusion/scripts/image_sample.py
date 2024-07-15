@@ -4,11 +4,16 @@ numpy array. This can be used to produce samples for FID evaluation.
 """
 
 import argparse
+import sys
 import os
+dir_path = os.path.dirname(os.path.realpath(__file__))
+parent_dir_path = os.path.abspath(os.path.join(dir_path, os.pardir))
+sys.path.insert(0, parent_dir_path)
 
 import numpy as np
 import torch as th
 import torch.distributed as dist
+from PIL import Image
 
 from guided_diffusion import dist_util, logger
 from guided_diffusion.script_util import (
@@ -19,6 +24,14 @@ from guided_diffusion.script_util import (
     args_to_dict,
 )
 
+
+
+
+def save_images(images, output_path):
+    for i in range(images.shape[0]):
+        image_array = np.uint8(images[i])
+        image = Image.fromarray(image_array)
+        image.save(os.path.join(output_path, f'image_{i}.png'))
 
 def main():
     args = create_argparser().parse_args()
@@ -72,19 +85,24 @@ def main():
             all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
         logger.log(f"created {len(all_images) * args.batch_size} samples")
 
+    
     arr = np.concatenate(all_images, axis=0)
     arr = arr[: args.num_samples]
-    if args.class_cond:
-        label_arr = np.concatenate(all_labels, axis=0)
-        label_arr = label_arr[: args.num_samples]
-    if dist.get_rank() == 0:
-        shape_str = "x".join([str(x) for x in arr.shape])
-        out_path = os.path.join(logger.get_dir(), f"samples_{shape_str}.npz")
-        logger.log(f"saving to {out_path}")
-        if args.class_cond:
-            np.savez(out_path, arr, label_arr)
-        else:
-            np.savez(out_path, arr)
+    os.makedirs(args.output_path, exist_ok=True)
+    save_images(arr, args.output_path)
+
+    logger.log(f"saving to {args.output_path}")
+    # if args.class_cond:
+    #     label_arr = np.concatenate(all_labels, axis=0)
+    #     label_arr = label_arr[: args.num_samples]
+    # if dist.get_rank() == 0:
+    #     shape_str = "x".join([str(x) for x in arr.shape])
+    #     out_path = os.path.join(logger.get_dir(), f"samples_{shape_str}.npz")
+    #     logger.log(f"saving to {out_path}")
+    #     if args.class_cond:
+    #         np.savez(out_path, arr, label_arr)
+    #     else:
+    #         np.savez(out_path, arr)
 
     dist.barrier()
     logger.log("sampling complete")
@@ -93,10 +111,11 @@ def main():
 def create_argparser():
     defaults = dict(
         clip_denoised=True,
-        num_samples=10000,
+        num_samples=10,
         batch_size=16,
         use_ddim=False,
         model_path="",
+        output_path='saved_images/',
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()

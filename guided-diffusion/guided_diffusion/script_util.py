@@ -95,7 +95,7 @@ def create_model_and_diffusion(
     resblock_updown,
     use_fp16,
     use_new_attention_order,
-    wm_length,
+    wm_length=0,
 ):
     model = create_model(
         image_size,
@@ -146,7 +146,7 @@ def create_model(
     resblock_updown=False,
     use_fp16=False,
     use_new_attention_order=False,
-    wm_length=48,
+    wm_length=0,
 ):
     if channel_mult == "":
         if image_size == 512:
