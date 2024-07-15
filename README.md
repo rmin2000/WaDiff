@@ -35,5 +35,13 @@ But before running the script, you need to configure properly, i.e. the path of 
 
 ### Citation
 The camera-ready version of our paper will be available soon.
+```
+@article{min2024watermark,
+  title={A watermark-conditioned diffusion model for ip protection},
+  author={Min, Rui and Li, Sen and Chen, Hongyang and Cheng, Minhao},
+  journal={arXiv preprint arXiv:2403.10893},
+  year={2024}
+}
+```
 
 #### Our codes are heavily built upon [stable-diffusion](https://github.com/CompVis/stable-diffusion), [guided-diffusion](https://github.com/openai/guided-diffusion) and [WatermarkDM](https://github.com/yunqing-me/WatermarkDM).
