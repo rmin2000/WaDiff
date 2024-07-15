@@ -26,6 +26,11 @@ sh train.sh
 ```
 But before running the script, you need to configure properly, i.e. the path of the pre-trained decoder checkpoint ```--wm_decoder_path``` (from Step 1) and the path of the training data ```--data_dir``` in your project (mostly the same in Step 1), the number of watermark bits ```--wm_length```, the balance parameter $\alpha$ ```--alpha```, and the time threshold $\tau$ ```--threshold```. Besides, you need to download the pre-trained diffusion model [checkpoint](https://openaipublic.blob.core.windows.net/diffusion/jul-2021/256x256_diffusion_uncond.pt) and put it into the ```models/``` folder.
 
+#### Step 3: Generate Watermarked Images
+
+#### Step 4: Source Identification
+
+
 [Pin] I will keep on updating this repo. However, reproducing the project will require some time as the original code was accidentally deleted due to an unfortunate accident (the original server was taken back without making any backup). Nevertheless, I plan to reproduce this repo before the conference. Should you have any concerns related to our project, please contact me via rminaa@connect.ust.hk.
 - [x] StegaStamp training code
 - [x] Imagenet Diffusion
