@@ -21,15 +21,25 @@ Note that directly running the script may not be successful as you need to speci
 #### Step 2: Fine-tune Diffusion Model
 Once you have finished the pre-training process, you can utilize the watermark decoder to guide the fine-tuning process of the diffusion model. For the ImageNet Diffusion model, you can run the following commands:
 ```cmd
-cd guided-diffusion
+cd ../guided-diffusion
 sh train.sh
 ```
 But before running the script, you need to configure properly, i.e. the path of the pre-trained decoder checkpoint ```--wm_decoder_path``` (from Step 1) and the path of the training data ```--data_dir``` in your project (mostly the same in Step 1), the number of watermark bits ```--wm_length```, the balance parameter $\alpha$ ```--alpha```, and the time threshold $\tau$ ```--threshold```. Besides, you need to download the pre-trained diffusion model [checkpoint](https://openaipublic.blob.core.windows.net/diffusion/jul-2021/256x256_diffusion_uncond.pt) and put it into the ```models/``` folder.
 
 #### Step 3: Generate Watermarked Images
+After the fine-tuning step, you could use this watermark-conditioned diffusion model to generate watermarked images with the following commands:
+```cmd
+sh generate.sh
+```
+All generated images are saved in a default folder named ```saved_images``` (specified by ```--output_path```) and will be organized into individual subfolders indexed by the specific ID of the watermark. You could also change ```--batch_size``` to adjust the number of generated images within individual subfolders.
 
 #### Step 4: Source Identification
-
+Finally, run the following command to perform tracing:
+```cmd
+cd ..
+python trace.py
+```
+Note that the ```--image_path``` indicates where you save watermarked images, which should be consistent with the ```--output_path``` specified in Step 3.
 
 [Pin] I will keep on updating this repo. However, reproducing the project will require some time as the original code was accidentally deleted due to an unfortunate accident (the original server was taken back without making any backup). Nevertheless, I plan to reproduce this repo before the conference. Should you have any concerns related to our project, please contact me via rminaa@connect.ust.hk.
 - [x] StegaStamp training code
