@@ -40,8 +40,11 @@ def main():
     logger.configure()
 
     logger.log("creating model and diffusion...")
+
+    keys = np.load('watermark_pool/1e4.npy')[:1000]
+    
     model, diffusion = create_model_and_diffusion(
-        **args_to_dict(args, model_and_diffusion_defaults().keys())
+        **args_to_dict(args, model_and_diffusion_defaults().keys()), wm_length=args.wm_length
     )
     model.load_state_dict(
         dist_util.load_state_dict(args.model_path, map_location="cpu")
@@ -54,7 +57,11 @@ def main():
     logger.log("sampling...")
     all_images = []
     all_labels = []
-    while len(all_images) * args.batch_size < args.num_samples:
+    # while len(all_images) * args.batch_size < args.num_samples:
+    for idx, key in enumerate(keys):
+        if args.wm_length < 0:
+            key = None
+
         model_kwargs = {}
         if args.class_cond:
             classes = th.randint(
@@ -69,6 +76,7 @@ def main():
             (args.batch_size, 3, args.image_size, args.image_size),
             clip_denoised=args.clip_denoised,
             model_kwargs=model_kwargs,
+            key=key,
         )
         sample = ((sample + 1) * 127.5).clamp(0, 255).to(th.uint8)
         sample = sample.permute(0, 2, 3, 1)
@@ -76,22 +84,24 @@ def main():
 
         gathered_samples = [th.zeros_like(sample) for _ in range(dist.get_world_size())]
         dist.all_gather(gathered_samples, sample)  # gather not supported with NCCL
-        all_images.extend([sample.cpu().numpy() for sample in gathered_samples])
+        # all_images.extend([sample.cpu().numpy() for sample in gathered_samples])
+        all_images = [sample.cpu().numpy() for sample in gathered_samples]
         if args.class_cond:
             gathered_labels = [
                 th.zeros_like(classes) for _ in range(dist.get_world_size())
             ]
             dist.all_gather(gathered_labels, classes)
-            all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
+            # all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
+            all_labels = [labels.cpu().numpy() for labels in gathered_labels]
         logger.log(f"created {len(all_images) * args.batch_size} samples")
 
     
-    arr = np.concatenate(all_images, axis=0)
-    arr = arr[: args.num_samples]
-    os.makedirs(args.output_path, exist_ok=True)
-    save_images(arr, args.output_path)
+        arr = np.concatenate(all_images, axis=0)
+        arr = arr[: args.num_samples]
+        os.makedirs(os.path.join(args.output_path, f'{idx}/'), exist_ok=True)
+        save_images(arr, os.path.join(args.output_path, f'{idx}/'))
 
-    logger.log(f"saving to {args.output_path}")
+        logger.log(f"saving to {os.path.join(args.output_path, f'{idx}/')}")
     # if args.class_cond:
     #     label_arr = np.concatenate(all_labels, axis=0)
     #     label_arr = label_arr[: args.num_samples]
@@ -116,6 +126,7 @@ def create_argparser():
         use_ddim=False,
         model_path="",
         output_path='saved_images/',
+        wm_length=48,
     )
     defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()

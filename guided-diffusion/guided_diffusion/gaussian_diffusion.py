@@ -268,7 +268,7 @@ class GaussianDiffusion:
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
     def p_mean_variance(
-        self, model, x, t, clip_denoised=True, denoised_fn=None, model_kwargs=None
+        self, model, x, t, clip_denoised=True, denoised_fn=None, model_kwargs=None, key=None,
     ):
         """
         Apply the model to get p(x_{t-1} | x_t), as well as a prediction of
@@ -295,7 +295,10 @@ class GaussianDiffusion:
 
         B, C = x.shape[:2]
         assert t.shape == (B,)
-        model_output = model(x, self._scale_timesteps(t), **model_kwargs)
+        if key is not None:
+            model_output = model((x, key), self._scale_timesteps(t), **model_kwargs)
+        else:
+            model_output = model(x, self._scale_timesteps(t), **model_kwargs)
 
         if self.model_var_type in [ModelVarType.LEARNED, ModelVarType.LEARNED_RANGE]:
             assert model_output.shape == (B, C * 2, *x.shape[2:])
@@ -582,6 +585,7 @@ class GaussianDiffusion:
         cond_fn=None,
         model_kwargs=None,
         eta=0.0,
+        key=None,
     ):
         """
         Sample x_{t-1} from the model using DDIM.
@@ -672,6 +676,7 @@ class GaussianDiffusion:
         device=None,
         progress=False,
         eta=0.0,
+        key=None,
     ):
         """
         Generate samples from the model using DDIM.
@@ -690,6 +695,7 @@ class GaussianDiffusion:
             device=device,
             progress=progress,
             eta=eta,
+            key=key,
         ):
             final = sample
         return final["sample"]
@@ -706,6 +712,7 @@ class GaussianDiffusion:
         device=None,
         progress=False,
         eta=0.0,
+        key=None,
     ):
         """
         Use DDIM to sample from the model and yield intermediate samples from
@@ -740,6 +747,7 @@ class GaussianDiffusion:
                     cond_fn=cond_fn,
                     model_kwargs=model_kwargs,
                     eta=eta,
+                    key=key,
                 )
                 yield out
                 img = out["sample"]
