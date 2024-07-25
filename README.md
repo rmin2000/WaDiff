@@ -19,7 +19,7 @@ sh train.sh
 Note that directly running the script may not be successful as you need to specify the path of the training data ```--data_dir``` in your project. Besides, you can customize your experiments by adjusting hyperparameters such as the number of watermark bits ```--bit_length```, image resolution ```--image_resolution```, training epochs ```--num_epochs``` and GPU device ```--cuda```.
 
 #### Step 2: Fine-tune Diffusion Model
-Once you have finished the pre-training process, you can utilize the watermark decoder to guide the fine-tuning process of the diffusion model. For the ImageNet Diffusion model, you can run the following commands:
+Once you have finished the pre-training process, you can utilize the watermark decoder to guide the diffusion model's fine-tuning process. For the ImageNet Diffusion model, you can run the following commands:
 ```cmd
 cd ../guided-diffusion
 sh train.sh
