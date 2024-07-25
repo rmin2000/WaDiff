@@ -49,7 +49,6 @@ Note that the ```--image_path``` indicates where you save watermarked images, wh
 - [ ] Stable Diffusion
 
 ### Citation
-The camera-ready version of our paper will be available soon.
 ```
 @article{min2024watermark,
   title={A watermark-conditioned diffusion model for ip protection},
