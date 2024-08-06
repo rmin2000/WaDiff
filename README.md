@@ -46,7 +46,7 @@ Note that the ```--image_path``` indicates where you save watermarked images, wh
 - [x] Imagenet Diffusion
 - [x] Generation code
 - [x] Tracing Code
-- [ ] Stable Diffusion
+- [ ] Stable Diffusion (progressing)
 
 ### Citation
 ```
