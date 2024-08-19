@@ -41,7 +41,7 @@ python trace.py
 ```
 Note that the ```--image_path``` indicates where you save watermarked images, which should be consistent with the ```--output_path``` specified in Step 3.
 
-[Pin] I will keep on updating this repo. However, reproducing the project will require some time as the original code was accidentally deleted due to an unfortunate accident (the original server was taken back without making any backup). Nevertheless, I plan to reproduce this repo before the conference. Should you have any concerns related to our project, please contact me via rminaa@connect.ust.hk.
+
 - [x] StegaStamp training code
 - [x] Imagenet Diffusion
 - [x] Generation code
