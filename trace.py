@@ -35,9 +35,9 @@ def trace(image_path, decoder, device):
     decoder.to(args.device)
 
     # Load pre-defined watermarks ad watermarked images
-    user_pool_1e4 = np.load('watermark_pool/1e4.npy')
-    user_pool_1e5 = np.load('watermark_pool/1e5.npy')
-    user_pool_1e6 = np.load('watermark_pool/1e6.npy')
+    user_pool_1e4 = np.load(f'watermark_pool/{bit_length}_1e4.npy')
+    user_pool_1e5 = np.load(f'watermark_pool/{bit_length}_1e5.npy')
+    user_pool_1e6 = np.load(f'watermark_pool/{bit_length}_1e6.npy')
 
     image_path_list = glob.glob(image_path + '*/*.png')
 
