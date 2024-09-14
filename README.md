@@ -44,13 +44,6 @@ python trace.py
 ```
 Note that the ```--image_path``` indicates where you save watermarked images, which should be consistent with the ```--output_path``` specified in Step 3.
 
-
-- [x] StegaStamp training code
-- [x] Imagenet Diffusion
-- [x] Generation code
-- [x] Tracing Code
-- [ ] Stable Diffusion (progressing)
-
 ### Citation
 ```
 @article{min2024watermark,
