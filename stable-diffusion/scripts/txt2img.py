@@ -1,4 +1,5 @@
 import argparse, os, sys, glob
+sys.path.append('./')
 import cv2
 import torch
 import numpy as np
@@ -21,6 +22,7 @@ from ldm.models.diffusion.dpm_solver import DPMSolverSampler
 
 from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 from transformers import AutoFeatureExtractor
+
 
 
 # load safety model
@@ -157,7 +159,7 @@ def main():
     parser.add_argument(
         "--n_iter",
         type=int,
-        default=2,
+        default=1,
         help="sample this often",
     )
     parser.add_argument(
@@ -187,7 +189,7 @@ def main():
     parser.add_argument(
         "--n_samples",
         type=int,
-        default=3,
+        default=1,
         help="how many samples to produce for each given prompt. A.k.a. batch size",
     )
     parser.add_argument(
@@ -216,7 +218,7 @@ def main():
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="models/ldm/stable-diffusion-v1/model.ckpt",
+        default="models/ldm/stable-diffusion-v-1-4-original/sd-v1-4.ckpt",
         help="path to checkpoint of model",
     )
     parser.add_argument(

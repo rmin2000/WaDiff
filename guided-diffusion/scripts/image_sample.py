@@ -41,7 +41,13 @@ def main():
 
     logger.log("creating model and diffusion...")
 
-    keys = np.load('watermark_pool/1e4.npy')[:1000]
+    if not os.path.exists(f'watermark_pool/{args.wm_length}_1e4.npy'):
+        os.makedirs('watermark_pool', exist_ok=True)
+        np.save(f'watermark_pool/{args.wm_length}_1e4.npy', np.random.randint(0, 2, size=(int(1e4), args.wm_length)))
+        np.save(f'watermark_pool/{args.wm_length}_1e5.npy', np.random.randint(0, 2, size=(int(1e5), args.wm_length)))
+        np.save(f'watermark_pool/{args.wm_length}_1e6.npy', np.random.randint(0, 2, size=(int(1e6), args.wm_length)))
+        
+    keys = np.load(f'watermark_pool/{args.wm_length}_1e4.npy')[:1000]
     
     model, diffusion = create_model_and_diffusion(
         **args_to_dict(args, model_and_diffusion_defaults().keys()), wm_length=args.wm_length
@@ -56,11 +62,14 @@ def main():
 
     logger.log("sampling...")
     all_images = []
-    all_labels = []
+    
     # while len(all_images) * args.batch_size < args.num_samples:
     for idx, key in enumerate(keys):
         if args.wm_length < 0:
             key = None
+        else:
+            key = th.from_numpy(key).to(dist_util.dev()).float()
+            key = key.repeat(args.batch_size, 1)
 
         model_kwargs = {}
         if args.class_cond:
@@ -91,8 +100,7 @@ def main():
                 th.zeros_like(classes) for _ in range(dist.get_world_size())
             ]
             dist.all_gather(gathered_labels, classes)
-            # all_labels.extend([labels.cpu().numpy() for labels in gathered_labels])
-            all_labels = [labels.cpu().numpy() for labels in gathered_labels]
+           
         logger.log(f"created {len(all_images) * args.batch_size} samples")
 
     
@@ -102,17 +110,7 @@ def main():
         save_images(arr, os.path.join(args.output_path, f'{idx}/'))
 
         logger.log(f"saving to {os.path.join(args.output_path, f'{idx}/')}")
-    # if args.class_cond:
-    #     label_arr = np.concatenate(all_labels, axis=0)
-    #     label_arr = label_arr[: args.num_samples]
-    # if dist.get_rank() == 0:
-    #     shape_str = "x".join([str(x) for x in arr.shape])
-    #     out_path = os.path.join(logger.get_dir(), f"samples_{shape_str}.npz")
-    #     logger.log(f"saving to {out_path}")
-    #     if args.class_cond:
-    #         np.savez(out_path, arr, label_arr)
-    #     else:
-    #         np.savez(out_path, arr)
+    
 
     dist.barrier()
     logger.log("sampling complete")
