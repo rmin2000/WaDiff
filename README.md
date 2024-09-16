@@ -44,6 +44,8 @@ python trace.py
 ```
 Note that the ```--image_path``` indicates where you save watermarked images, which should be consistent with the ```--output_path``` specified in Step 3.
 
+The code for stable diffusion is not finished yet.
+
 ### Citation
 ```
 @article{min2024watermark,
