@@ -876,9 +876,11 @@ class GaussianDiffusion:
             assert model_output.shape == target.shape == x_start.shape
             
             if ori_model_output is not None:
-                
+
+                ori_model_output, _ = th.split(ori_model_output, C, dim=1)
                 x_0_fingerprinted = th.clamp(self.q_sample_reverse(x_t, t, model_output), -1, 1)
                 x_0_original = th.clamp(self.q_sample_reverse(x_t, t, ori_model_output), -1, 1)
+                
                 decoder_output = wm_decoder((x_0_fingerprinted + 1) * 0.5) 
                 # First reverse the x_0
                 # then decode from the reversed x_0 to obtain fingerprints
@@ -887,7 +889,7 @@ class GaussianDiffusion:
                 BCE_loss = F.binary_cross_entropy_with_logits(decoder_output*10, fingerprints, reduction='none')
                 BCE_loss *= (t <= threshold).view(-1, 1)
                 BCE_loss = BCE_loss.mean()
-                ori_model_output, _ = th.split(ori_model_output, C, dim=1)
+                
 
                 
                 terms["mse"] = mean_flat((self.per_model(x_0_original) - self.per_model(x_0_fingerprinted)) ** 2) 
