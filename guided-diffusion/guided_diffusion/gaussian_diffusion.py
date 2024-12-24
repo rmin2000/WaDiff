@@ -878,7 +878,7 @@ class GaussianDiffusion:
             if ori_model_output is not None:
                 
                 x_0_fingerprinted = th.clamp(self.q_sample_reverse(x_t, t, model_output), -1, 1)
-                
+                x_0_original = th.clamp(self.q_sample_reverse(x_t, t, ori_model_output), -1, 1)
                 decoder_output = wm_decoder((x_0_fingerprinted + 1) * 0.5) 
                 # First reverse the x_0
                 # then decode from the reversed x_0 to obtain fingerprints
@@ -890,7 +890,7 @@ class GaussianDiffusion:
                 ori_model_output, _ = th.split(ori_model_output, C, dim=1)
 
                 
-                terms["mse"] = mean_flat((self.per_model(ori_model_output) - self.per_model(model_output)) ** 2) 
+                terms["mse"] = mean_flat((self.per_model(x_0_original) - self.per_model(x_0_fingerprinted)) ** 2) 
                 terms["wm"] = alpha * BCE_loss 
                 terms["loss"] = terms["mse"] + terms["wm"]
             else:
