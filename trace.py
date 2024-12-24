@@ -31,7 +31,7 @@ args = parser.parse_args()
 
 def trace(image_path, decoder, device):
 
-    count_pool_1e4, count_pool_1e5, count_pool_1e6 = 0, 0, 0
+    count_pool_1e4, count_pool_1e5, count_pool_1e6, matched_bits = 0, 0, 0, 0
     decoder.to(args.device)
 
     # Load pre-defined watermarks ad watermarked images
@@ -47,6 +47,9 @@ def trace(image_path, decoder, device):
         user_index = int(path.split('/')[-2])
         
         fingerprints_predicted = (decoder(img) > 0).float().cpu().numpy()
+        
+        matched_bits = np.abs(fingerprints_predicted - user_pool_1e4[user_index]).sum(0)
+        
         if np.argmin(np.abs(fingerprints_predicted - user_pool_1e4).sum(0)) == user_index:
             count_pool_1e4 += 1
         if np.argmin(np.abs(fingerprints_predicted - user_pool_1e5).sum(0)) == user_index:
@@ -54,7 +57,7 @@ def trace(image_path, decoder, device):
         if np.argmin(np.abs(fingerprints_predicted - user_pool_1e6).sum(0)) == user_index:
             count_pool_1e6 += 1
         
-    return {'trace1e4': count_pool_1e4/1e4, 'trace1e5': count_pool_1e5/1e5, 'trace1e6': count_pool_1e6/1e6}
+    return {'trace1e4': count_pool_1e4/1e4, 'trace1e5': count_pool_1e5/1e5, 'trace1e6': count_pool_1e6/1e6, 'matched_bits': matched_bits/len(image_path_list)}
         
     
     
