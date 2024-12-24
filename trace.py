@@ -51,7 +51,7 @@ def trace(image_path, decoder, detection_thre, device):
         
         fingerprints_predicted = (decoder(img) > 0).float().cpu().numpy()
         
-        if np.abs(fingerprints_predicted - user_pool_1e4[user_index]).sum(0) > detection_thre
+        if 1 - np.abs(fingerprints_predicted - user_pool_1e4[user_index]).sum(0) / len(fingerprints_predicted) > detection_thre
             count_detection += 1
         if np.argmin(np.abs(fingerprints_predicted - user_pool_1e4).sum(0)) == user_index:
             count_pool_1e4 += 1
