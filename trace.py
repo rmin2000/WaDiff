@@ -15,13 +15,16 @@ parser.add_argument(
     "--bit_length", type=int, default=48, help="Length of watermark bits."
 )
 parser.add_argument(
-    "--model_type", type=str, default='imagenet', choices=['imagenet', 'stable'], help="ImageNet Diffusion or Stable Diffusion"
+    "--model_type", type=str, default='imagenet', choices=['imagenet', 'stable'], help="ImageNet Diffusion or Stable Diffusion."
 )
 parser.add_argument(
-    "--checkpoint", type=str, default='./', help="Checkpoint of the watermark decoder"
+    "--checkpoint", type=str, default='./', help="Checkpoint of the watermark decoder."
 )
 parser.add_argument(
-    "--device", type=int, default=0, help="GPU index"
+    "--device", type=int, default=0, help="GPU index."
+)
+parser.add_argument(
+    "--detection_thre", type=float, default=0.8, help="Bit threshold for detection."
 )
 
 
@@ -29,12 +32,12 @@ args = parser.parse_args()
 
 
 
-def trace(image_path, decoder, device):
+def trace(image_path, decoder, detection_thre, device):
 
-    count_pool_1e4, count_pool_1e5, count_pool_1e6, matched_bits = 0, 0, 0, 0
+    count_pool_1e4, count_pool_1e5, count_pool_1e6, count_detection = 0, 0, 0, 0
     decoder.to(args.device)
 
-    # Load pre-defined watermarks ad watermarked images
+    # Load pre-defined watermarks and watermarked images
     user_pool_1e4 = np.load(f'watermark_pool/{bit_length}_1e4.npy')
     user_pool_1e5 = np.load(f'watermark_pool/{bit_length}_1e5.npy')
     user_pool_1e6 = np.load(f'watermark_pool/{bit_length}_1e6.npy')
@@ -48,8 +51,8 @@ def trace(image_path, decoder, device):
         
         fingerprints_predicted = (decoder(img) > 0).float().cpu().numpy()
         
-        matched_bits = np.abs(fingerprints_predicted - user_pool_1e4[user_index]).sum(0)
-        
+        if np.abs(fingerprints_predicted - user_pool_1e4[user_index]).sum(0) > detection_thre
+            count_detection += 1
         if np.argmin(np.abs(fingerprints_predicted - user_pool_1e4).sum(0)) == user_index:
             count_pool_1e4 += 1
         if np.argmin(np.abs(fingerprints_predicted - user_pool_1e5).sum(0)) == user_index:
@@ -57,7 +60,7 @@ def trace(image_path, decoder, device):
         if np.argmin(np.abs(fingerprints_predicted - user_pool_1e6).sum(0)) == user_index:
             count_pool_1e6 += 1
         
-    return {'trace1e4': count_pool_1e4/1e4, 'trace1e5': count_pool_1e5/1e5, 'trace1e6': count_pool_1e6/1e6, 'matched_bits': matched_bits/len(image_path_list)}
+    return {'trace1e4': count_pool_1e4/1e4, 'trace1e5': count_pool_1e5/1e5, 'trace1e6': count_pool_1e6/1e6, 'detection_acc': count_detection/len(image_path_list)}
         
     
     
@@ -73,5 +76,5 @@ if __name__ == "__main__":
     decoder.load_state_dict(torch.load(args.checkpoint, map_location='cpu'))
     
     # Perform tracing
-    result = trace(args.image_path, decoder, args.device)
-    print(result['trace1e4'], result['trace1e5'], result['trace1e6'])
+    result = trace(args.image_path, decoder, args.detection_thre, args.device)
+    print(result['trace1e4'], result['trace1e5'], result['trace1e6'], result['detection_acc'])
