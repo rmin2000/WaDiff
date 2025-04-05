@@ -19,6 +19,7 @@ from tensorboardX import SummaryWriter
 from torch.optim import Adam
 import torch.nn.functional as F
 import models
+import utils_img 
 
 
 parser = argparse.ArgumentParser()
@@ -111,7 +112,6 @@ plot_points = (
     + list(range(1000, 3000, 200))
     + list(range(3000, 100000, 1000))
 )
-
 
 class CustomImageFolder(Dataset):
     def __init__(self, data_dir, transform=None):
